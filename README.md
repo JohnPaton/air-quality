@@ -1,5 +1,14 @@
 # Air Quality Prediction
 
+## Installation
+To create a virtual environment and install the required packages, run
+
+```bash
+$ make venv
+```
+
+Note that you should have Python 3.6 and virtualenv available.
+
 
 ## Data
 
