@@ -1,0 +1,10 @@
+version: '3'
+services:
+  air-quality:
+    build: .
+    image: air-quality
+    ports: 
+      - 8080:5000
+    volumes:
+      - ./data/db:/usr/db
+      - ./models/v0:/usr/models

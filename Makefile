@@ -4,13 +4,14 @@ activate=venv/air-quality/bin/activate
 
 ## Download most recent data
 data:
-	source $(activate); cd scripts; python get_data.py
+	source $(activate); python scripts/get_data.py -r data/raw/openaq -d data/db/aq.db -a
 
 ## Make virtual environment
 venv: 
+	- rm -rf venv
 	-mkdir venv
 	virtualenv venv/air-quality -p python3.6
-	-source $(activate); pip install -r requirements.txt
+	source $(activate); pip install -r requirements.txt
 
 ## Update requirements in requirements.txt
 requirements: 
