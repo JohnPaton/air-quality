@@ -106,5 +106,6 @@ ENV/
 # custom
 data/*
 activate
+models/
 
 !**.gitkeep
