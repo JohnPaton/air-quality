@@ -1,0 +1,2 @@
+0 */4 * * * python /usr/src/air-quality/scripts/get_data.py -r /usr/openaq-temp -d /usr/db/aq.db
+* * * * * echo "cron is running" >> /usr/openaq-temp/cron.txt

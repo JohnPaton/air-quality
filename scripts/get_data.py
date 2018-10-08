@@ -1,61 +1,50 @@
-import os
-import glob
+import air_quality as aq
+import click
 import pandas as pd
-import requests
-from tqdm import tqdm
+
+RAW_DIR = "../data/raw/openaq"
+DB_FILE = "../data/db/aq.db"
+START_DATE = "2015-06-29"
 
 
-def generate_dates():
-    # first file on https://openaq-data.s3.amazonaws.com
-    start_date = '2015-06-29'
-    date_fmt = '%Y-%m-%d'
-    dates = pd.date_range(start_date, pd.datetime.today())  # datetime objects
-    date_strs = [d.strftime(date_fmt) for d in dates]  # strings
+def main(raw_dir, start_date, db_file):
+    dates = aq.data_loading.generate_date_list(start_date)
 
-    return date_strs
+    aq.data_loading.remove_most_recent_csvs(raw_dir, n=5)
 
+    urls_fnames = aq.data_loading.get_download_params(dates, raw_dir)
+    aq.data_loading.download_files(urls_fnames)
 
-def remove_most_recent():
-    # get rid of last downloaded file (probably incomplete/day wasn't over yet)
-    existing_files = list(sorted(glob.glob('../data/raw/openaq/*.csv')))
-    if existing_files:
-        for fname in existing_files[-2:]:
-            os.remove(fname)
-            print('Removed', fname.split('/')[-1])
+    paths = [x[1] for x in urls_fnames]
+    aq.data_loading.load_amsterdam_from_csvs(paths, db_file)
+
+    aq.data_loading.refresh_amsterdam_interim_table(db_file)
 
 
-def get_download_params(dates):
-    # pairs of (url, filename) for downloading and saving raw data
-    base_url = 'https://openaq-data.s3.amazonaws.com/{}.csv'
-    base_fname = '../data/raw/openaq/{}.csv'
+@click.command()
+@click.option(
+    "-r",
+    "--raw_dir",
+    type=click.Path(file_okay=False, dir_okay=True),
+    default=RAW_DIR,
+)
+@click.option(
+    "-d",
+    "--db_file",
+    type=click.Path(file_okay=True, dir_okay=False),
+    default=DB_FILE,
+)
+@click.option("-a", "--download_all", is_flag=True)
+def cli(raw_dir, db_file, download_all):
+    if download_all:
+        start = START_DATE
+    else:
+        today = pd.datetime.today()
+        recent = today - pd.Timedelta(days=5)
+        start = str(recent.date())
 
-    # pairs of (url, filename) for downloading data
-    urls_fnames = [(base_url.format(d), base_fname.format(d),) for d in dates]
-
-    # skip existing files
-    urls_fnames_filtered = [tpl for tpl in urls_fnames
-                           if not os.path.isfile(tpl[1])]
-
-    return urls_fnames_filtered
-
-
-def download_files(urls_fnames):
-    print('Downloading files...')
-    pbar = tqdm(urls_fnames, dynamic_ncols=True)
-    for url, fname in pbar:
-        cur_date = url.split('/')[-1][:-4]
-        pbar.set_description('Now on {}'.format(cur_date))
-        response = requests.get(url)
-        with open(fname, 'w') as h:
-            h.write(response.text)
-
-
-def main():
-    dates = generate_dates()
-    remove_most_recent()
-    urls_fnames = get_download_params(dates)
-    download_files(urls_fnames)
+    main(raw_dir, start, db_file)
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    cli()
